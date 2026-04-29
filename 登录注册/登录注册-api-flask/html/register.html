@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>注册</title>
+</head>
+
+<body>
+    <center>
+        <h1>注册</h1>
+        <span id="msg"> </span><br>
+        <input type="text" name="username" oninput="checkUsername()" placeholder="用户名" required><br>
+        <input type="password" name="password" placeholder="密码" required><br>
+        <input type="email" name="email" placeholder="电子邮箱" required><br>
+        <input type="submit" onclick="register()" value="注册"><br>
+        <a href="/login/">点我登录</a>
+    </center>
+
+    <script>
+        // 检测用户名是否存在
+        function checkUsername() {
+            var username = document.getElementsByName('username')[0].value;
+            fetch('/api/checkuser/?username=' + username).then(response => {
+                response.json().then(data => {
+                    if (data.code == 0) {
+                        document.getElementById('msg').innerHTML = `<font color="green">用户名不存在</font>`;
+                    } else if (data.code == 1) {
+                        document.getElementById('msg').innerHTML = `<font color="red">用户名存在</font>`;
+                    }
+                })
+            })
+        }
+
+        // 提交注册的数据
+        function register() {
+            var username = document.getElementsByName('username')[0].value;
+            var password = document.getElementsByName('password')[0].value;
+            var email = document.getElementsByName('email')[0].value;
+
+            fetch('/api/register/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'username=' + username + '&password=' + password + '&email=' + email
+            }).then(response => {
+                response.json().then(data => {
+                    if (data.code == 0) {
+                        document.getElementById('msg').innerHTML = `<font color="red">${data.msg}</font>`;
+                    } else if (data.code == 1) {
+                        document.getElementById('msg').innerHTML = `<font color="green">${data.msg}</font>`;
+                        setTimeout(function () { window.location.href = '/login/' }, 2000);
+                    }
+                })
+            })
+        }
+    </script>
+</body>
+
+</html>

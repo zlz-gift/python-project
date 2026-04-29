@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理</title>
+</head>
+
+<body>
+    <div class="box">
+        <center>
+            <h1>欢迎用户<span id="username"></span>登录</h1>
+            <h6><a href="/api/logout/">退出登录</a></h6>
+        </center>
+        <table border="1px" cellspacing="0" align="center" id="user_list">
+            <tr align="center">
+                <td>序号</td>
+                <td width="100px">用户名</td>
+                <td width="100px">密码</td>
+                <td width="150px">邮箱</td>
+                <td width="100px">状态</td>
+                <td width="100px">操作</td>
+            </tr>
+        </table>
+    </div>
+    <script>
+        // 使用post方式访问此链接/user_list/
+        fetch('/api/user_list/').then(response => {
+                response.json().then(data => {
+                    var username = data.username;
+                    document.getElementById('username').innerHTML = username;
+
+                    var userdata = data.userlist;
+                    var userList = document.getElementById('user_list');
+                    var i = 0;
+                    for (var [username, userinfo] of Object.entries(userdata)) {
+                        i++;
+                        var row = document.createElement('tr');
+                        row.setAttribute('align', 'center');
+                        var password = userinfo.password.substring(0, 5) + '*****';
+                        var status = "正常";
+                        if (userinfo.count == 0) {
+                            status = "封禁";
+                        }
+                        row.innerHTML = `
+                        <td>${i}</td>
+                        <td>${username}</td>
+                        <td>${password}</td>
+                        <td>${userinfo.email}</td>
+                        <td>${status}</td>
+                        <td>
+                            <a href="/api/reset_user/?username=${username}">解封</a>
+                            <a href="/api/delete_user/?username=${username}">删除</a>
+                        </td>
+                        `;
+                        userList.appendChild(row);
+                    }
+                })
+        })
+
+    </script>
+</body>
+
+</html>

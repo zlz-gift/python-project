@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+</head>
+
+<body>
+    <center>
+        <h1>登录</h1>
+        <span id="msg"> </span><br>
+        <input type="text" name="username" oninput="checkUsername()" placeholder="用户名" required><br>
+        <input type="password" name="password" placeholder="密码" required><br>
+        <input type="submit" onclick="login()" value="登录"><br>
+        <a href="/register/">点我注册</a>
+    </center>
+    <script>
+
+        // 检测用户名是否存在
+        function checkUsername() {
+            var username = document.getElementsByName('username')[0].value;
+            fetch('/api/checkuser/?username=' + username).then(response => {
+                response.json().then(data => {
+                    if (data.code == 0) {
+                        document.getElementById('msg').innerHTML = `<font color="red">用户名不存在</font>`;
+                    } else if (data.code == 1) {
+                        document.getElementById('msg').innerHTML = `<font color="green">用户名存在</font>`;
+                    }
+                })
+            })
+        }
+
+        // 登录功能
+        function login() {
+            var username = document.getElementsByName('username')[0].value;
+            var password = document.getElementsByName('password')[0].value;
+            fetch('/api/login/', 
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'username=' + username + '&password=' + password
+                }
+            ).then(response => {
+                response.json().then(data => {
+                    if (data.code == 0) {
+                        document.getElementById('msg').innerHTML = `<font color="red">${data.msg}</font>`;
+                    } else if (data.code == 1) {
+                        document.getElementById('msg').innerHTML = `<font color="green">欢迎${data.username}回来！</font>`;
+                        setTimeout(function () { window.location.href = '/user_list/' }, 2000);
+                    }
+                })
+            })
+        }
+    </script>
+</body>
+
+</html>
