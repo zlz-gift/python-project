@@ -1,0 +1,23 @@
+<!-- inside index.html -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Typing game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Typing game!</h1>
+    <p class="lead">练习你的打字速度，系统会给出一段福尔摩斯的引言。点击 <strong>Start</strong> 开始。</p>
+    <p id="quote" aria-live="polite"></p>
+    <p id="message" role="status" aria-atomic="true"></p>
+    <div class="game-row">
+      <input type="text" aria-label="current word" id="typed-value" placeholder="输入高亮的单词然后按空格" />
+      <button type="button" id="start">Start</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

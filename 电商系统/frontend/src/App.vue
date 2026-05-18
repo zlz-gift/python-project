@@ -1,9 +1,17 @@
 <script setup>
-import ProductView from "./views/ProductView.vue"
+import { useRouter } from 'vue-router'
 </script>
 
 <template>
-
-  <router-view />
-
+  <div class="app">
+    <router-view />
+  </div>
 </template>
+
+<style scoped>
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+</style>
