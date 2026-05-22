@@ -13,3 +13,5 @@ class User(Base):
     password = Column(String(255), nullable=False)
 
     nickname = Column(String(50))
+
+    role = Column(String(20), default="user")

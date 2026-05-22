@@ -5,6 +5,7 @@ import { onMounted, ref } from "vue"
 import { getUserInfo } from "../api/user"
 const router = useRouter()
 const nickname = ref("")
+const isAdmin = ref(false)
 function goHome() {
 
   router.push("/")
@@ -13,6 +14,11 @@ function goHome() {
 function goCart() {
 
   router.push("/cart")
+}
+
+function goAdmin() {
+
+  router.push("/admin/products")
 }
 
 function logout() {
@@ -27,6 +33,7 @@ async function loadUserInfo() {
   const res = await getUserInfo()
 
   nickname.value = res.data.nickname
+  isAdmin.value = res.data.role === "admin"
 }
 
 onMounted(() => {
@@ -58,10 +65,24 @@ onMounted(() => {
       </el-button>
 
       <el-button
+        @click="() => router.push('/orders')"
+      >
+        我的订单
+      </el-button>
+
+      <el-button
         type="primary"
         @click="goCart"
       >
         购物车
+      </el-button>
+
+      <el-button
+        v-if="isAdmin"
+        type="success"
+        @click="goAdmin"
+      >
+        管理后台
       </el-button>
 
       <el-button

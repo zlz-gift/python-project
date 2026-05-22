@@ -1,4 +1,3 @@
-<!-- inside index.html -->
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -10,13 +9,36 @@
 <body>
   <div class="container">
     <h1>Typing game!</h1>
-    <p class="lead">练习你的打字速度，系统会给出一段福尔摩斯的引言。点击 <strong>Start</strong> 开始。</p>
+    <p class="lead">练习你的打字速度，系统会给出福尔摩斯的引言。选择难度后点击 <strong>Start</strong> 开始。</p>
+
+    <div class="difficulty-row">
+      <span class="difficulty-label">难度：</span>
+      <button type="button" class="diff-btn active" data-difficulty="easy">简单</button>
+      <button type="button" class="diff-btn" data-difficulty="medium">中等</button>
+      <button type="button" class="diff-btn" data-difficulty="hard">困难</button>
+    </div>
+
+    <div class="stats-bar">
+      <span id="timer">0.0s</span>
+      <span id="wpm">WPM: 0</span>
+      <span id="accuracy">准确率: --</span>
+    </div>
+
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+    </div>
+
     <p id="quote" aria-live="polite"></p>
     <p id="message" role="status" aria-atomic="true"></p>
+    <p id="best-score"></p>
+
     <div class="game-row">
-      <input type="text" aria-label="current word" id="typed-value" placeholder="输入高亮的单词然后按空格" />
+      <input type="text" aria-label="current word" id="typed-value" placeholder="输入高亮的单词然后按空格" disabled />
       <button type="button" id="start">Start</button>
+      <button type="button" id="restart" class="hidden">重新开始</button>
     </div>
+
+    <p class="shortcut-hint">提示: 按 <kbd>Enter</kbd> 开始 / 按 <kbd>Esc</kbd> 取消</p>
   </div>
   <script src="script.js"></script>
 </body>

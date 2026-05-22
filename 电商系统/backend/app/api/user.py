@@ -22,7 +22,8 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     new_user = User(
         username=user.username,
         password=hash_password(user.password),
-        nickname=user.nickname
+        nickname=user.nickname,
+        role=user.role
     )
 
     db.add(new_user)
@@ -59,7 +60,10 @@ def login(
         )
 
     token = create_access_token(
-        {"user_id": db_user.id}
+        {
+            "user_id": db_user.id,
+            "role": db_user.role
+        }
     )
 
     return {
@@ -81,5 +85,7 @@ def userinfo(
 
         "username": current_user.username,
 
-        "nickname": current_user.nickname
+        "nickname": current_user.nickname,
+
+        "role": current_user.role
     }

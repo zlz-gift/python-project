@@ -1,9 +1,13 @@
 <script setup>
 
 import { onMounted, ref, computed } from "vue"
+import { useRouter } from "vue-router"
 import { deleteCart } from "../api/cart"
 import { getCart } from "../api/cart"
+import { createOrder } from "../api/order"
 import AppHeader from "../components/AppHeader.vue"
+import { ElMessage } from "element-plus"
+const router = useRouter()
 const cartList = ref([])
 const totalPrice = computed(() => {
 
@@ -29,9 +33,19 @@ async function handleDelete(id) {
 
   await deleteCart(id)
 
-  alert("删除成功")
+  ElMessage.success("删除成功")
 
   loadCart()
+}
+
+async function handleCheckout() {
+  try {
+    const res = await createOrder()
+    ElMessage.success("下单成功！")
+    router.push(`/orders/${res.data.order_id}`)
+  } catch (err) {
+    ElMessage.error(err.response?.data?.detail || "下单失败")
+  }
 }
 
 onMounted(() => {
@@ -135,8 +149,9 @@ onMounted(() => {
             type="primary"
             size="large"
             class="checkout-btn"
+            @click="handleCheckout"
           >
-            🔐 去结算
+            去结算
           </el-button>
         </div>
       </div>

@@ -34,4 +34,6 @@ class Product(Base):
 
     description = Column(Text)
 
+    category = Column(String(50), default="")
+
     image = Column(String(255))

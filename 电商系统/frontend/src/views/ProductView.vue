@@ -3,11 +3,42 @@ import { onMounted, ref } from "vue"
 import { getProducts } from "../api/product"
 import { addCart } from "../api/cart"
 import AppHeader from "../components/AppHeader.vue"
+
 const productList = ref([])
+const keyword = ref("")
+const selectedCategory = ref("")
+const minPrice = ref("")
+const maxPrice = ref("")
+const allCategories = ref([])
+
 async function loadProducts() {
-  const res = await getProducts()
+  const params = {}
+  if (keyword.value) params.keyword = keyword.value
+  if (selectedCategory.value) params.category = selectedCategory.value
+  if (minPrice.value !== "") params.min_price = minPrice.value
+  if (maxPrice.value !== "") params.max_price = maxPrice.value
+  const res = await getProducts(params)
   productList.value = res.data
 }
+
+async function loadCategories() {
+  const res = await getProducts()
+  const categories = [...new Set(res.data.map(p => p.category).filter(Boolean))]
+  allCategories.value = categories
+}
+
+function handleSearch() {
+  loadProducts()
+}
+
+function handleReset() {
+  keyword.value = ""
+  selectedCategory.value = ""
+  minPrice.value = ""
+  maxPrice.value = ""
+  loadProducts()
+}
+
 async function handleAddCart(id) {
   await addCart({
     product_id: id,
@@ -15,19 +46,68 @@ async function handleAddCart(id) {
   })
   alert("加入购物车成功")
 }
+
 onMounted(() => {
   loadProducts()
+  loadCategories()
 })
-
 </script>
 
 <template>
   <AppHeader />
   <div class="container">
     <div class="header-section">
-      <h1>🛍️ 商品中心</h1>
+      <h1>商品中心</h1>
       <p class="subtitle">精选好货，优质生活</p>
     </div>
+
+    <div class="search-section">
+      <div class="search-row">
+        <el-input
+          v-model="keyword"
+          placeholder="搜索商品名称..."
+          clearable
+          class="search-input"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <span>🔍</span>
+          </template>
+        </el-input>
+
+        <el-select
+          v-model="selectedCategory"
+          placeholder="全部分类"
+          clearable
+          class="category-select"
+        >
+          <el-option
+            v-for="cat in allCategories"
+            :key="cat"
+            :label="cat"
+            :value="cat"
+          />
+        </el-select>
+
+        <el-input
+          v-model="minPrice"
+          placeholder="最低价"
+          class="price-input"
+        />
+
+        <span class="price-sep">—</span>
+
+        <el-input
+          v-model="maxPrice"
+          placeholder="最高价"
+          class="price-input"
+        />
+
+        <el-button type="primary" @click="handleSearch">搜索</el-button>
+        <el-button @click="handleReset">重置</el-button>
+      </div>
+    </div>
+
     <div class="product-list">
       <el-card
         v-for="item in productList"
@@ -97,6 +177,38 @@ onMounted(() => {
   font-size: 16px;
   color: #999;
   margin: 0;
+}
+
+.search-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.category-select {
+  width: 140px;
+}
+
+.price-input {
+  width: 100px;
+}
+
+.price-sep {
+  color: #999;
+  font-size: 14px;
 }
 
 .product-list {
@@ -243,6 +355,21 @@ onMounted(() => {
 
   .header-section h1 {
     font-size: 28px;
+  }
+
+  .search-row {
+    flex-direction: column;
+  }
+
+  .search-input,
+  .category-select,
+  .price-input {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .price-sep {
+    display: none;
   }
 
   .product-list {
