@@ -9,6 +9,7 @@ import RegisterView from "../views/RegisterView.vue"
 import AdminProductView from "../views/AdminProductView.vue"
 import OrderView from "../views/OrderView.vue"
 import OrderDetailView from "../views/OrderDetailView.vue"
+import ProductDetailView from "../views/ProductDetailView.vue"
 
 const routes = [
     {
@@ -37,6 +38,10 @@ const routes = [
         path: "/orders/:id",
         component: OrderDetailView,
         meta: { requiresAuth: true }
+    },
+    {
+        path: "/products/:id",
+        component: ProductDetailView
     },
     {
         path: "/admin/products",

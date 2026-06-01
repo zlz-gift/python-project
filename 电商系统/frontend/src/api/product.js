@@ -15,6 +15,13 @@ export function getProductById(id) {
     })
 }
 
+export function getCategories() {
+    return request({
+        url: "/products/categories",
+        method: "get"
+    })
+}
+
 export function createProduct(data) {
     return request({
         url: "/products/",

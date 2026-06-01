@@ -1,5 +1,4 @@
-from fastapi import APIRouter
-from fastapi import Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.models.product import Product
 from sqlalchemy.orm import Session
 
@@ -9,7 +8,7 @@ from app.models.cart import Cart
 
 from app.models.user import User
 
-from app.schemas.cart import CartCreate
+from app.schemas.cart import CartCreate, CartUpdate
 
 from app.core.deps import get_current_user
 
@@ -88,6 +87,30 @@ def get_cart(
         })
 
     return result
+
+@router.put("/{cart_id}")
+def update_cart(
+        cart_id: int,
+        data: CartUpdate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    cart = db.query(Cart).filter(
+        Cart.id == cart_id,
+        Cart.user_id == current_user.id
+    ).first()
+
+    if not cart:
+        raise HTTPException(
+            status_code=404,
+            detail="购物车不存在"
+        )
+
+    cart.quantity = data.quantity
+    db.commit()
+
+    return {"msg": "更新成功"}
+
 
 @router.delete("/{cart_id}")
 def delete_cart(

@@ -56,7 +56,7 @@ def get_current_user(
 def require_admin(
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "admin":
+    if current_user.role != "admin": # type: ignore
         raise HTTPException(
             status_code=403,
             detail="需要管理员权限"

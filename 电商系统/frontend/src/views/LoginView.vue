@@ -2,6 +2,7 @@
 import { reactive, ref } from "vue"
 import { login } from "../api/user"
 import { useRouter } from "vue-router"
+import { ElMessage } from "element-plus"
 
 const form = reactive({
   username: "",
@@ -11,18 +12,15 @@ const form = reactive({
 const loading = ref(false)
 const router = useRouter()
 
-// 去注册页
 function goRegister() {
   router.push("/register")
 }
 
-// 登录
 async function handleLogin() {
   if (loading.value) return
 
-  // ✅ 前端校验
   if (!form.username || !form.password) {
-    alert("用户名或密码不能为空")
+    ElMessage.warning("用户名或密码不能为空")
     return
   }
 
@@ -30,24 +28,15 @@ async function handleLogin() {
 
   try {
     const res = await login(form)
-
-    // 存 token
     localStorage.setItem("token", res.data.token)
-
-    // （可选）存用户信息
     if (res.data.user) {
       localStorage.setItem("user", JSON.stringify(res.data.user))
     }
-
-    alert("登录成功")
-
+    ElMessage.success("登录成功")
     router.push("/")
   } catch (error) {
-    console.log(error)
-
-    alert(
-      error?.response?.data?.detail ||
-      "登录失败"
+    ElMessage.error(
+      error?.response?.data?.detail || "登录失败"
     )
   } finally {
     loading.value = false

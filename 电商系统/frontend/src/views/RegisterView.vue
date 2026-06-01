@@ -2,6 +2,7 @@
 import { reactive, ref } from "vue"
 import { useRouter } from "vue-router"
 import { register } from "../api/user"
+import { ElMessage } from "element-plus"
 
 const router = useRouter()
 const loading = ref(false)
@@ -12,18 +13,16 @@ const form = reactive({
   nickname: ""
 })
 
-// 注册
 async function handleRegister() {
   if (loading.value) return
 
-  // ✅ 前端校验（非常重要）
   if (!form.username || !form.password || !form.nickname) {
-    alert("请填写完整信息")
+    ElMessage.warning("请填写完整信息")
     return
   }
 
   if (form.password.length < 6) {
-    alert("密码至少6位")
+    ElMessage.warning("密码至少6位")
     return
   }
 
@@ -31,25 +30,17 @@ async function handleRegister() {
 
   try {
     await register(form)
-
-    alert("注册成功")
-
-    // 注册成功跳登录
+    ElMessage.success("注册成功，请登录")
     router.push("/login")
-
   } catch (error) {
-    console.log(error)
-
-    alert(
-      error?.response?.data?.detail ||
-      "注册失败"
+    ElMessage.error(
+      error?.response?.data?.detail || "注册失败"
     )
   } finally {
     loading.value = false
   }
 }
 
-// 去登录
 function goLogin() {
   router.push("/login")
 }

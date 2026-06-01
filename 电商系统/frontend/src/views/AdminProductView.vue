@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue"
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../api/product"
 import AppHeader from "../components/AppHeader.vue"
+import AppFooter from "../components/AppFooter.vue"
 import { ElMessage, ElMessageBox } from "element-plus"
 
 const productList = ref([])
@@ -25,8 +26,8 @@ const rules = {
 }
 
 async function loadProducts() {
-  const res = await getProducts()
-  productList.value = res.data
+  const res = await getProducts({ page_size: 100 })
+  productList.value = res.data.items || res.data
 }
 
 function openAdd() {
@@ -82,7 +83,7 @@ onMounted(() => {
 
 <template>
   <AppHeader />
-  <div class="container">
+  <div class="container" style="min-height: calc(100vh - 70px - 200px)">
     <div class="page-header">
       <h1>商品管理</h1>
       <el-button type="primary" @click="openAdd">添加商品</el-button>
@@ -135,6 +136,7 @@ onMounted(() => {
       </template>
     </el-dialog>
   </div>
+  <AppFooter />
 </template>
 
 <style scoped>

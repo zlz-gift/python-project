@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { getOrderById } from "../api/order"
 import AppHeader from "../components/AppHeader.vue"
+import AppFooter from "../components/AppFooter.vue"
 
 const route = useRoute()
 const order = ref(null)
@@ -21,7 +22,7 @@ onMounted(() => {
   <AppHeader />
   <div class="container" v-if="order">
     <div class="page-header">
-      <h1>订单详情</h1>
+      <h1>📄 订单详情</h1>
     </div>
 
     <el-card class="info-card">
@@ -60,16 +61,19 @@ onMounted(() => {
     </el-card>
 
     <div class="back-row">
-      <el-button @click="$router.push('/orders')">返回订单列表</el-button>
+      <el-button @click="$router.push('/orders')">← 返回订单列表</el-button>
+      <el-button type="primary" @click="$router.push('/')">继续购物</el-button>
     </div>
   </div>
+  <AppFooter />
 </template>
 
 <style scoped>
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 40px 20px 60px;
+  min-height: calc(100vh - 70px - 200px);
 }
 
 .page-header {
@@ -128,5 +132,8 @@ onMounted(() => {
 
 .back-row {
   text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
 }
 </style>

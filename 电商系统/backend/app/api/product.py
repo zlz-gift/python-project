@@ -49,6 +49,8 @@ def get_products(
         category: str = Query(default=None, description="分类筛选"),
         min_price: float = Query(default=None, description="最低价格"),
         max_price: float = Query(default=None, description="最高价格"),
+        page: int = Query(default=1, ge=1, description="页码"),
+        page_size: int = Query(default=12, ge=1, le=100, description="每页数量"),
         db: Session = Depends(get_db)
 ):
     query = db.query(Product)
@@ -65,9 +67,23 @@ def get_products(
     if max_price is not None:
         query = query.filter(Product.price <= max_price)
 
-    products = query.all()
+    total = query.count()
+    offset = (page - 1) * page_size
+    products = query.offset(offset).limit(page_size).all()
 
-    return products
+    return {
+        "items": products,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size
+    }
+
+
+@router.get("/categories")
+def get_categories(db: Session = Depends(get_db)):
+    categories = db.query(Product.category).distinct().all()
+    return [c[0] for c in categories if c[0]]
 
 
 @router.get("/{product_id}")
