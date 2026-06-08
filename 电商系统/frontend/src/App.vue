@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 <template>
   <div class="app">
-    <router-view />
+    <router-view></router-view>
   </div>
 </template>
 

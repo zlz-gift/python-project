@@ -1,7 +1,9 @@
 fastapi==0.136.3
-uvicorn==0.48.0
-sqlalchemy==2.0.50
+uvicorn[standard]==0.48.0
+sqlalchemy[asyncio]==2.0.50
+aiosqlite==0.21.0
+greenlet==3.2.4
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-pymysql==1.2.0
+redis[hiredis]==5.3.1
