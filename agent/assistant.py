@@ -10,11 +10,14 @@ from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
     AIMessage,
+    ToolMessage,
     messages_from_dict,
     messages_to_dict,
 )
 from langchain_core.chat_history import BaseChatMessageHistory
 from dotenv import load_dotenv
+
+from tools import TOOLS
 
 load_dotenv()
 
@@ -34,6 +37,10 @@ SYSTEM_PROMPT = """你叫「小助手」，是一个专业、中性的通用个�
 - 专业、简洁、友好；短句为主，条理清晰，必要时用列表分点
 - 一次回复聚焦 1 到 3 个要点，不啰嗦、不卖萌、不过度使用表情符号
 - 信息不足时先提问澄清，不猜测；不确定时明确说明不确定
+
+【工具使用】
+- 当需要当前时间、精确计算或检索本地笔记时，调用对应工具获取真实结果，不要凭猜测回答
+- 一次可以按需调用多个工具；工具返回错误时换一种方式重试或如实说明，不要编造结果
 
 【安全与隐私】
 - 不涉及色情、暴力、违法内容
@@ -181,32 +188,95 @@ class Assistant:
         db_path: str = 'assistant.db',
         summary_trigger: int = 30,
         max_buffer: int = 20,
+        max_tool_rounds: int = 5,
     ):
         self.db_path = db_path
         self.summary_trigger = summary_trigger
         self.max_buffer = max_buffer
+        self.max_tool_rounds = max_tool_rounds
         self.llm = ChatOpenAI(model='deepseek-chat', temperature=0.7)
         self.chat_chain = self.llm | StrOutputParser()
         self.summary_chain = SUMMARY_PROMPT | self.llm | StrOutputParser()
+        self._llm_with_tools = None
+
+    # ---------- 工具调用 ----------
+
+    def _agent_llm(self):
+        """懒加载绑定工具的模型；模型或网关不支持工具调用时会抛异常，由上层降级。"""
+        if self._llm_with_tools is None:
+            self._llm_with_tools = self.llm.bind_tools(TOOLS)
+        return self._llm_with_tools
+
+    def _run_tool(self, name: str, args: dict) -> str:
+        """执行模型选定的工具，异常统一转成可读文本回填，避免整轮对话失败。"""
+        tool = next((t for t in TOOLS if t.name == name), None)
+        if tool is None:
+            return f'未知工具：{name}'
+        try:
+            return str(tool.invoke(args or {}))
+        except Exception as exc:
+            return f'工具 {name} 执行出错：{exc}'
+
+    @staticmethod
+    def _system_text(summary: str) -> str:
+        """人设 + 长期摘要，拼成最终的系统指令。"""
+        if not summary:
+            return SYSTEM_PROMPT
+        return f'{SYSTEM_PROMPT}\n\n【之前对话的摘要（长期记忆）】\n{summary}'
+
+    # ---------- 对话主流程 ----------
 
     def chat(self, session_id: str, text: str) -> str:
+        """只返回回复文本，保持向后兼容。"""
+        reply, _ = self.chat_with_trace(session_id, text)
+        return reply
+
+    def chat_with_trace(self, session_id: str, text: str) -> tuple[str, list[str]]:
+        """执行一轮 Agent 对话，返回 (回复文本, 本轮调用的工具名列表)。
+
+        流程：组装上下文 → 模型判断是否调工具 → 执行工具并回填结果 → 循环，
+        直到模型给出最终回答，或达到 max_tool_rounds 上限。
+        """
         history = SQLiteChatMessageHistory(session_id, self.db_path)
         summary_store = SummaryStore(self.db_path)
         summary = summary_store.get(session_id)
 
-        # 1. 组装上下文：人设 + 长期摘要 + 最近对话 + 当前输入
-        system_text = SYSTEM_PROMPT
-        if summary:
-            system_text += f'\n\n【之前对话的摘要（长期记忆）】\n{summary}'
-
-        context: list[BaseMessage] = [SystemMessage(content=system_text)]
+        # 1. 组装上下文：人设（含长期摘要）+ 最近对话 + 当前输入
+        context: list[BaseMessage] = [SystemMessage(content=self._system_text(summary))]
         context.extend(history.messages)
         context.append(HumanMessage(content=text))
 
-        # 2. 调用模型
-        reply = self.chat_chain.invoke(context)
+        # 2. Agent 循环：由模型自主决定是否调工具、调几次
+        used_tools: list[str] = []
+        reply = ''
+        try:
+            llm_with_tools = self._agent_llm()
+            for _ in range(self.max_tool_rounds):
+                ai_message = llm_with_tools.invoke(context)
+                context.append(ai_message)
+                tool_calls = getattr(ai_message, 'tool_calls', None) or []
+                if not tool_calls:
+                    reply = ai_message.content or ''
+                    break
+                for call in tool_calls:
+                    used_tools.append(call['name'])
+                    result = self._run_tool(call['name'], call.get('args') or {})
+                    context.append(ToolMessage(content=result, tool_call_id=call['id']))
+            else:
+                # 跑满上限仍未给出最终回答，兜底收尾
+                reply = '（这个问题需要多步工具调用，已达到本轮上限，请补充更具体的信息。）'
+        except Exception as exc:
+            # 降级：模型或网关不支持工具调用时退回纯对话链，保证服务可用
+            print(f'[warn] 工具调用不可用，降级为普通对话：{exc}')
+            fallback: list[BaseMessage] = [
+                SystemMessage(content=self._system_text(summary)),
+                *history.messages,
+                HumanMessage(content=text),
+            ]
+            reply = self.chat_chain.invoke(fallback)
+            used_tools = []
 
-        # 3. 存进缓冲区
+        # 3. 只把最终问答写入短期缓冲，工具中间步骤不入库，避免污染摘要
         history.add_messages([HumanMessage(content=text), AIMessage(content=reply)])
 
         # 4. 缓冲区太满就做一次摘要压缩
@@ -219,7 +289,7 @@ class Assistant:
             summary_store.set(session_id, new_summary)
             history.keep_last(self.max_buffer)
 
-        return reply
+        return reply, used_tools
 
     def clear(self, session_id: str) -> None:
         SQLiteChatMessageHistory(session_id, self.db_path).clear()

@@ -84,10 +84,16 @@ HTML = """<!DOCTYPE html>
     word-break: break-word;
     white-space: pre-wrap;
   }
+  .msg.bot { flex-direction: column; align-items: flex-start; }
   .msg.bot .bubble {
     background: var(--bubble-bot);
     border-bottom-left-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .tools {
+    margin: 4px 0 0 6px;
+    font-size: 11px;
+    color: #7a86b8;
   }
   .msg.me .bubble {
     background: var(--bubble-me);
@@ -161,13 +167,25 @@ HTML = """<!DOCTYPE html>
 
   function scrollBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
 
-  function addBubble(text, who) {
+  const TOOL_LABELS = {
+    get_current_time: '时间查询',
+    calculate: '计算器',
+    search_notes: '笔记检索',
+  };
+
+  function addBubble(text, who, tools) {
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + who;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = text;
     wrap.appendChild(bubble);
+    if (tools && tools.length) {
+      const trace = document.createElement('div');
+      trace.className = 'tools';
+      trace.textContent = '调用工具：' + tools.map((t) => TOOL_LABELS[t] || t).join(' · ');
+      wrap.appendChild(trace);
+    }
     chatEl.appendChild(wrap);
     scrollBottom();
     return bubble;
@@ -205,7 +223,7 @@ HTML = """<!DOCTYPE html>
       });
       const data = await res.json();
       removeTyping();
-      addBubble(data.reply || '（暂时没有获取到回复，请稍后重试）', 'bot');
+      addBubble(data.reply || '（暂时没有获取到回复，请稍后重试）', 'bot', data.tools);
     } catch (e) {
       removeTyping();
       addBubble('（网络出错了，稍后再试）', 'bot');
@@ -249,8 +267,8 @@ def index():
 
 @app.post('/api/chat')
 def chat(req: ChatRequest):
-    reply = bot.chat(req.session_id, req.text)
-    return {'reply': reply}
+    reply, tools = bot.chat_with_trace(req.session_id, req.text)
+    return {'reply': reply, 'tools': tools}
 
 
 @app.post('/api/clear')

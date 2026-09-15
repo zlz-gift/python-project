@@ -16,4 +16,7 @@ while True:
         print('（记忆已清空，我们重新开始。）')
         continue
 
-    print('小助手：', bot.chat('default', user_input))
+    reply, tools = bot.chat_with_trace('default', user_input)
+    if tools:
+        print(f'（调用工具：{"、".join(tools)}）')
+    print('小助手：', reply)
