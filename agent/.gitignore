@@ -1,0 +1,13 @@
+# 环境变量与密钥（含真实 API Key，切勿提交）
+.env
+
+# 本地数据库（含对话记录）
+*.db
+*.db.bak
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 虚拟环境
+.venv/

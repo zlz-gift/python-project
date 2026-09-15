@@ -1,0 +1,21 @@
+# 核心框架
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+
+# 向量数据库与 Embedding
+langchain-chroma>=0.1.0
+sentence-transformers>=3.0.0
+
+# Jupyter 与工具
+jupyter>=1.0.0
+ipykernel>=6.29.0
+python-dotenv>=1.0.0
+
+# 可选：搜索/网络请求工具
+requests>=2.32.0
+
+# 微信接入（公众号/企业微信 Webhook 服务）
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pycryptodome>=3.20.0
