@@ -59,9 +59,15 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages([
 class SQLiteChatMessageHistory(BaseChatMessageHistory):
     """把最近的对话缓冲区持久化到 SQLite，程序重启后不丢失。"""
 
-    def __init__(self, session_id: str, db_path: str = 'assistant.db'):
+    def __init__(
+        self,
+        session_id: str,
+        db_path: str = 'assistant.db',
+        max_load: int = 200,
+    ):
         self.session_id = session_id
         self.db_path = db_path
+        self.max_load = max_load
         self._init_db()
         self.messages: list[BaseMessage] = self._load()
 
@@ -82,12 +88,21 @@ class SQLiteChatMessageHistory(BaseChatMessageHistory):
             )
 
     def _load(self) -> list[BaseMessage]:
+        """加载最近 max_load 条消息，按时间正序返回。
+
+        max_load 是兜底上限：正常情况下 keep_last() 会把缓冲区控制在阈值附近，
+        但若历史异常堆积（例如摘要压缩连续失败、或库中存在旧数据），
+        也不能把全部历史一次性塞进上下文导致超出模型窗口。
+        """
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(
-                'SELECT data FROM messages WHERE session_id = ? ORDER BY id',
-                (self.session_id,),
+                '''
+                SELECT data FROM messages WHERE session_id = ?
+                ORDER BY id DESC LIMIT ?
+                ''',
+                (self.session_id, self.max_load),
             ).fetchall()
-        return messages_from_dict([json.loads(r[0]) for r in rows])
+        return messages_from_dict([json.loads(r[0]) for r in reversed(rows)])
 
     def add_messages(self, messages: Sequence[BaseMessage]) -> None:
         serialized = messages_to_dict(messages)
@@ -131,16 +146,7 @@ class SummaryStore:
         self.db_path = db_path
         self._init_db()
 
-    def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                '''
-                CREATE TABLE IF NOT EXISTS summary (
-                    session_id TEXT PRIMARY KEY,
-                    content TEXT NOT NULL
-                )
-                '''
-            )
+    
 
     def get(self, session_id: str) -> str:
         with sqlite3.connect(self.db_path) as conn:
@@ -279,15 +285,20 @@ class Assistant:
         # 3. 只把最终问答写入短期缓冲，工具中间步骤不入库，避免污染摘要
         history.add_messages([HumanMessage(content=text), AIMessage(content=reply)])
 
-        # 4. 缓冲区太满就做一次摘要压缩
+        # 4. 缓冲区超过阈值就做一次摘要压缩
+        #    压缩失败不能让本次回复失败，也不能让缓冲区无限增长：
+        #    失败时保留原文，下一轮会再次尝试压缩
         if len(history.messages) > self.summary_trigger:
-            old_messages = history.messages[:-self.max_buffer]
-            new_summary = self.summary_chain.invoke({
-                'summary': summary or '（无）',
-                'new_messages': format_messages(old_messages),
-            })
-            summary_store.set(session_id, new_summary)
-            history.keep_last(self.max_buffer)
+            try:
+                old_messages = history.messages[:-self.max_buffer]
+                new_summary = self.summary_chain.invoke({
+                    'summary': summary or '（无）',
+                    'new_messages': format_messages(old_messages),
+                })
+                summary_store.set(session_id, new_summary)
+                history.keep_last(self.max_buffer)
+            except Exception as exc:
+                print(f'[warn] 摘要压缩失败，本轮跳过压缩：{exc}')
 
         return reply, used_tools
 
