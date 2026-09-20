@@ -2,10 +2,17 @@
 
 import { useRouter } from "vue-router"
 import { onMounted, ref } from "vue"
+import { storeToRefs } from "pinia"
 import { getUserInfo } from "../api/user"
+import { useCartStore } from "../stores/cart"
+
 const router = useRouter()
+const cartStore = useCartStore()
+// 购物车角标数据来自全局 store，加购后自动更新，无需刷新页面
+const { totalCount } = storeToRefs(cartStore)
 const nickname = ref("")
 const isAdmin = ref(false)
+
 function goHome() {
 
   router.push("/")
@@ -24,21 +31,30 @@ function goAdmin() {
 function logout() {
 
   localStorage.removeItem("token")
+  localStorage.removeItem("user")
+  cartStore.reset() // 清空购物车缓存，避免切换账号后残留上一个账号的数据
 
   router.push("/login")
 }
 
 async function loadUserInfo() {
 
-  const res = await getUserInfo()
+  if (!localStorage.getItem("token")) return
 
-  nickname.value = res.data.nickname
-  isAdmin.value = res.data.role === "admin"
+  try {
+    const res = await getUserInfo()
+
+    nickname.value = res.data.nickname
+    isAdmin.value = res.data.role === "admin"
+  } catch {
+    // 401 已由响应拦截器统一处理（清理登录态并跳转登录页）
+  }
 }
 
 onMounted(() => {
 
   loadUserInfo()
+  cartStore.fetch() // 进入任意页面都会同步角标；store 内有缓存标记，不会重复请求
 })
 </script>
 
@@ -70,12 +86,18 @@ onMounted(() => {
         我的订单
       </el-button>
 
-      <el-button
-        type="primary"
-        @click="goCart"
+      <el-badge
+        :value="totalCount"
+        :hidden="totalCount === 0"
+        class="cart-badge"
       >
-        购物车
-      </el-button>
+        <el-button
+          type="primary"
+          @click="goCart"
+        >
+          购物车
+        </el-button>
+      </el-badge>
 
       <el-button
         v-if="isAdmin"
@@ -136,6 +158,17 @@ onMounted(() => {
 .menu {
   display: flex;
   gap: 12px;
+}
+
+/* el-badge 包裹按钮后需保持 flex 对齐，否则角标会挤压按钮位置 */
+.cart-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cart-badge :deep(.el-badge__content) {
+  border: none;
+  font-weight: 600;
 }
 
 .menu :deep(.el-button) {

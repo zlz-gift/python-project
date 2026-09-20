@@ -1,39 +1,27 @@
 <script setup>
-import { onMounted, ref, computed } from "vue"
+import { onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
-import { getCart, updateCart, deleteCart } from "../api/cart"
+import { storeToRefs } from "pinia"
 import { createOrder } from "../api/order"
 import AppHeader from "../components/AppHeader.vue"
 import AppFooter from "../components/AppFooter.vue"
 import { ElMessage, ElMessageBox } from "element-plus"
+import { useCartStore } from "../stores/cart"
 
 const router = useRouter()
-const cartList = ref([])
-const loading = ref(false)
-
-const totalPrice = computed(() => {
-  return cartList.value.reduce(
-    (sum, item) => sum + item.price * item.quantity, 0
-  )
-})
-
-const totalQuantity = computed(() => {
-  return cartList.value.reduce((sum, item) => sum + item.quantity, 0)
-})
-
-async function loadCart() {
-  const res = await getCart()
-  cartList.value = res.data
-}
+const cartStore = useCartStore()
+// 购物车数据统一来自 Pinia store，页面不再自己请求后端
+const { items: cartList, loading: cartLoading, totalPrice, totalQuantity } = storeToRefs(cartStore)
+const submitting = ref(false)
 
 async function handleQuantityChange(item, newQty) {
   if (newQty < 1) newQty = 1
   try {
-    await updateCart(item.cart_id, { quantity: newQty })
-    item.quantity = newQty
+    // store 内部：请求后端 → 本地即时更新该项数量（不整表重拉）
+    await cartStore.changeQuantity(item.cart_id, newQty)
   } catch {
-    ElMessage.error("更新数量失败")
-    loadCart()
+    ElMessage.error("更新数量失败，已恢复为服务端数据")
+    await cartStore.fetch(true)
   }
 }
 
@@ -42,24 +30,29 @@ async function handleDelete(item) {
     await ElMessageBox.confirm(`确定要将「${item.name}」从购物车中移除吗？`, "删除确认", {
       type: "warning"
     })
-    await deleteCart(item.cart_id)
-    ElMessage.success("已移除")
-    loadCart()
   } catch {
-    // cancelled
+    return // 用户取消
+  }
+  try {
+    // store 内部：请求后端 → 本地 filter 掉该项
+    await cartStore.remove(item.cart_id)
+    ElMessage.success("已移除")
+  } catch {
+    ElMessage.error("移除失败，请稍后重试")
   }
 }
 
 async function handleCheckout() {
-  loading.value = true
+  submitting.value = true
   try {
     const res = await createOrder()
+    cartStore.clearLocal() // 后端下单时已清空购物车表，本地同步
     ElMessage.success("下单成功！")
     router.push(`/orders/${res.data.order_id}`)
   } catch (err) {
     ElMessage.error(err.response?.data?.detail || "下单失败")
   } finally {
-    loading.value = false
+    submitting.value = false
   }
 }
 
@@ -68,7 +61,8 @@ function goProduct(id) {
 }
 
 onMounted(() => {
-  loadCart()
+  // store 内有 loaded 标记：同一会话内重复进入本页不会重复请求
+  cartStore.fetch()
 })
 </script>
 
@@ -91,6 +85,7 @@ onMounted(() => {
     <div v-else class="cart-content">
       <div class="table-wrapper">
         <el-table
+          v-loading="cartLoading"
           :data="cartList"
           style="width: 100%"
           stripe
@@ -168,7 +163,7 @@ onMounted(() => {
             type="primary"
             size="large"
             class="checkout-btn"
-            :loading="loading"
+            :loading="submitting"
             @click="handleCheckout"
           >
             去结算

@@ -3,8 +3,6 @@ from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 
 from app.db.database import Base
-
-
 class Cart(Base):
 
     __tablename__ = "cart"

@@ -2,13 +2,14 @@
 import { onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { getProductById } from "../api/product"
-import { addCart } from "../api/cart"
 import AppHeader from "../components/AppHeader.vue"
 import AppFooter from "../components/AppFooter.vue"
 import { ElMessage } from "element-plus"
+import { useCartStore } from "../stores/cart"
 
 const route = useRoute()
 const router = useRouter()
+const cartStore = useCartStore()
 const product = ref(null)
 const quantity = ref(1)
 const loading = ref(false)
@@ -26,10 +27,8 @@ async function loadProduct() {
 async function handleAddCart() {
   loading.value = true
   try {
-    await addCart({
-      product_id: product.value.id,
-      quantity: quantity.value
-    })
+    // store 内完成"写后端 + 刷新购物车状态"，Header 角标随响应式状态自动更新
+    await cartStore.add(product.value.id, quantity.value)
     ElMessage.success("加入购物车成功")
   } catch (err) {
     ElMessage.error(err.response?.data?.detail || "加入购物车失败")
